@@ -1,0 +1,42 @@
+import { NextResponse } from 'next/server';
+import NextAuth from 'next-auth';
+
+import authConfig from '@/auth.config';
+import { authRoutes, DEFAULT_LOGIN_REDIRECT, publicRoutes } from '@/routes';
+
+const { auth } = NextAuth(authConfig);
+
+export default auth(async (req) => {
+  const { nextUrl } = req;
+
+  const isLoggedIn = !!req.auth;
+
+  const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
+  const isAuthRoute = authRoutes.includes(nextUrl.pathname);
+
+  if (isAuthRoute) {
+    if (isLoggedIn) {
+      return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT, nextUrl));
+    }
+
+  }
+
+  if (!isLoggedIn && !isPublicRoute) {
+    let callbackUrl = nextUrl.pathname;
+
+    if (nextUrl.search) {
+      callbackUrl += nextUrl.search;
+    }
+
+    const encodedCallbackUrl = encodeURIComponent(callbackUrl);
+
+    return NextResponse.redirect(new URL(`/login?callbackUrl=${encodedCallbackUrl}`, nextUrl));
+  }
+
+  return NextResponse.next();
+});
+
+// Optionally, don't invoke Middleware on some paths
+export const config = {
+  matcher: ['/((?!api/auth|_next/static|_next/image|favicon.ico).*)'],
+};
